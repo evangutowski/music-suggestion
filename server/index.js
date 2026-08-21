@@ -1,7 +1,9 @@
 import dotenv from "dotenv";
 import express from "express";
+import cors from "cors";
 dotenv.config();
 const app = express();
+app.use(cors());
 const PORT = 3000;
 
 async function getSpotifyToken() {
@@ -36,7 +38,7 @@ async function getSpotifyToken() {
 async function searchSpotify(token, query) {
     const params = new URLSearchParams({
         q: query,
-        type: "artist"
+        type: "artist,track"
     });
 
     const url = `https://api.spotify.com/v1/search?${params}`;
