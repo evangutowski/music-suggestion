@@ -24,10 +24,19 @@ function SearchBar(){
                     </input>
                     <button type="submit">Search</button>
                 </form>
-                    <ul>                            
+                    <ul className="artist-results">                            
                         {searchResults?.artists?.items?.map((artist) => (
-                            <li key={artist.id}>
-                                {artist.name}
+                            <li className="artist-card" key={artist.id}>
+                                <a 
+                                    href={artist.external_urls.spotify}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                >
+                                    {artist.images[0] && (
+                                        <img src={artist.images[0].url} alt={artist.name} />
+                                    )}
+                                    <p>{artist.name}</p>
+                                </a>
                             </li>
                         ))}
                     </ul>                    
