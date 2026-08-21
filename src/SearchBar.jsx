@@ -24,24 +24,43 @@ function SearchBar(){
                     </input>
                     <button type="submit">Search</button>
                 </form>
-                    <ul className="artist-results">                            
+                {searchResults?.tracks?.items?.length > 0 && (
+                    <section className="tracks">
+                        <h2>Tracks</h2>
+                        <ul className="tracks-results">
+                            {searchResults.tracks.items.map((track) => (
+                                <li className="track-card" key={track.id}>
+                                    <a href={track.external_urls.spotify} target="_blank" rel="noreferrer">
+                                        {track.album.images[0] && (
+                                            <img src={track.album.images[0].url} alt={track.album.name}/>
+                                        )}
+                                        <div>
+                                            <p>{track.name}</p>
+                                            <p>{track.artists.map((artist) => artist.name).join(", ")}</p>
+                                        </div>
+                                    </a>
+                                </li>
+                            ))}
+                        </ul>
+                    </section>
+                )}
+                <section className="artist">
+                    <h2>Artists</h2>
+                    <ul className="artist-results">
                         {searchResults?.artists?.items?.map((artist) => (
                             <li className="artist-card" key={artist.id}>
-                                <a 
-                                    href={artist.external_urls.spotify}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                >
+                                <a href={artist.external_urls.spotify} target="_blank" rel="noreferrer">
                                     {artist.images[0] && (
-                                        <img src={artist.images[0].url} alt={artist.name} />
+                                        <img src={artist.images[0].url} alt={artist.name}/>
                                     )}
                                     <p>{artist.name}</p>
                                 </a>
                             </li>
                         ))}
-                    </ul>                    
-                </div>
-            </section>
+                    </ul>
+                </section>
+            </div>
+        </section>
     )
 }
 
