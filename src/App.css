@@ -183,6 +183,13 @@
   }
 }
 
+.artist-card .spotify-link img,
+.track-card .spotify-link img
+ {
+  width: 75px;
+  height: 75px;
+}
+
 .artist,
 .tracks {
   width: 100%;

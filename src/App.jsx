@@ -1,24 +1,19 @@
 import './App.css'
 import SearchBar from './SearchBar'
+import ArtistPage from './ArtistPage'
+import TrackPage from './TrackPage'
+import { BrowserRouter, Route, Routes } from 'react-router-dom'
 
 function App() {
-
   return (
-    <>
-      <section id="center">
-        <div>
-          <h1>Music Suggestion Tool</h1>
-          <p>
-            Find new music based on what you already love.
-          </p>
-          <SearchBar />
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+      <BrowserRouter>
+        <Routes>
+          <Route path='/' element={<SearchBar />} />
+          <Route path='/artist/:id' element={<ArtistPage />} />
+          <Route path='/track/:id' element={<TrackPage />} />
+        </Routes>
+      </BrowserRouter>
+  );
 }
 
 export default App

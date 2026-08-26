@@ -57,11 +57,45 @@ async function searchSpotify(token, query) {
     return data;
 }
 
+
+async function getArtist(token, artistID) {
+    const response = await fetch(
+        `https://api.spotify.com/v1/artists/${artistID}`,
+        {
+            method: "GET",
+            headers: {
+                "Authorization": `Bearer ${token}`
+            }
+        }
+    );
+
+    const data = await response.json();
+    if (!response.ok) {
+        throw new Error(`Spotify artist request failed: ${JSON.stringify(data)}`);
+    }
+
+    return data;
+}
+
+
 app.get("/api/search", async (req, res) => {
     const token = await getSpotifyToken();
     const query = req.query.q;
     const data = await searchSpotify(token, query);
     res.json(data);
+});
+
+app.get("/api/artist/:id", async (req, res) => {
+    try {
+        const token = await getSpotifyToken();
+        const artist = await getArtist(token, req.params.id);
+        res.json(artist);
+    }
+
+    catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "Failed to get artist" });
+    }
 });
 
 app.listen(PORT, () => {
