@@ -34,12 +34,11 @@ function SearchBar(){
                             {searchResults.tracks.items.map((track) => (
                                 <li className="track-card" key={track.id}>
                                    <Link to={`/track/${track.id}`}>
+                                        <h2>{track.name}</h2>
                                         {track.album.images[0] && (
                                             <img src={track.album.images[0].url} alt={track.album.name}/>
                                         )}
-                                        <div>
-                                            <p>{track.name}</p>
-                                        </div>
+                                        <p>{track.artists?.map((artist) => artist.name).join(", ")}</p>
                                     </Link>
                                     <a className="spotify-link" href ={track.external_urls.spotify} target="_blank" rel="noreferrer">
                                         <img src={spotifyLogo} alt="Open on Spotify" />

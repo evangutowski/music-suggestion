@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import spotifyLogo from "./assets/spotify_logo.png";
 
 
 function ArtistPage() {
@@ -25,12 +26,16 @@ function ArtistPage() {
     }
 
     return (
-        <section>
-            <h1>{artist.name}</h1>
-            {artist.images?.[0] && (
-                <img src={artist.images[0].url} alt={artist.name} />
-            )}
-            <p>{artist.genres?.join(", ")}</p>
+        <section id="center">
+            <div className="artist-page-card">
+                <h2>{artist.name}</h2>
+                {artist.images?.[0] && (
+                    <img src={artist.images[0].url} alt={artist.name} />
+                )}
+                <a className="spotify-link" href ={artist.external_urls.spotify} target="_blank" rel="noreferrer">
+                    <img src={spotifyLogo} alt="Open on Spotify" />
+                </a>
+            </div>
         </section>
     );
 }

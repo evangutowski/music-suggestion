@@ -183,8 +183,21 @@
   }
 }
 
+.track-page-card,
+.artist-page-card {
+  width: 220px;
+  padding: 15px;
+  border-radius: 12px;
+  background: #1f1f1f;
+  font-size: 18px;
+  font-weight: 600;
+  justify-content: center;
+}
+
 .artist-card .spotify-link img,
-.track-card .spotify-link img
+.track-card .spotify-link img,
+.artist-page-card .spotify-link img,
+.track-page-card .spotify-link img
  {
   width: 75px;
   height: 75px;
@@ -238,7 +251,8 @@
   transform:scale(1.03);
 }
 
-.artist-card img {
+.artist-card img,
+.artist-page-card img {
   width: 150px;
   height: 150px;
   object-fit: cover;
@@ -266,7 +280,8 @@
     font-size: 14px;
 }
 
-.track-card img {
+.track-card img,
+.track-page-card img {
   width: 190px;
   height: 190px;
   object-fit: cover;
