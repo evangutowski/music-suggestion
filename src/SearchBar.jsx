@@ -20,11 +20,7 @@ function SearchBar(){
                 <p>Find New music based on what you already love!</p>
                 <p>Search for a song or artist</p>
                 <form onSubmit={handleSearch}>
-                    <input
-                    type="text"
-                    className="search"
-                    onChange={(event) => {setSearchTerm(event.target.value)}}>
-                    </input>
+                    <input type="text" className="search" onChange={(event) => {setSearchTerm(event.target.value)}} />
                     <button type="submit">Search</button>
                 </form>
                 {searchResults?.tracks?.items?.length > 0 && (
