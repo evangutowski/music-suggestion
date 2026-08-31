@@ -190,6 +190,63 @@ async function getTrackRecommendations(token, track) {
     };
 }
 
+async function getArtistRecommendations(token, artistID) {
+    const artistAlbums = [];
+    const otherArtists = [];
+    const albumParams = new URLSearchParams({
+        limit: "10",
+        include_groups: "album"
+    });
+
+    const albumResponse = await fetch(
+        `https://api.spotify.com/v1/artists/${artistID}/albums?${albumParams}`,
+        {
+            headers: {"Authorization": `Bearer ${token}`}
+        }
+    );
+
+    const albumData = await albumResponse.json();
+    if (!albumResponse.ok) {
+        throw new Error(
+            `Failed to get artist albums: ${JSON.stringify(albumData)}`
+        );
+    }
+
+    artistAlbums.push(...albumData.items);
+
+    for (const album of albumData.items.slice(0, 5)) {
+        const trackResponse = await fetch(
+            `https://api.spotify.com/v1/albums/${album.id}/tracks?limit=10`,
+            {
+                headers: {"Authorization": `Bearer ${token}`}
+            }
+        );
+
+        const trackData = await trackResponse.json();
+
+        if (!trackResponse.ok) {
+            continue;
+        }
+
+        for (const track of trackData.items) {
+            for (const artist of track.artists) {
+                if (artist.id !== artistID) {
+                    otherArtists.push(artist);
+                }
+            }
+        }
+    }
+
+    const uniqueOtherArtists = [
+        ...new Map(otherArtists.map((artist) => [artist.id, artist])).values()
+    ];
+
+    return {
+        artistAlbums: artistAlbums.slice(0, 5),
+        otherArtists: uniqueOtherArtists.slice(0, 10)
+    };
+}
+
 app.get("/api/search", async (req, res) => {
     const token = await getSpotifyToken();
     const query = req.query.q;
@@ -240,6 +297,28 @@ app.get("/api/recommendations/track/:id", async (req, res) => {
         console.error(error);
         res.status(500).json({
             error: "Failed to get track recommendations"
+        });
+    }
+});
+
+app.get("/api/recommendations/artist/:id", async (req, res) => {
+    try {
+        const token = await getSpotifyToken();
+        const artist = await getArtist(token, req.params.id);
+        const recommendations = await getArtistRecommendations(
+            token,
+            artist.id
+        );
+
+        res.json({
+            artist: artist,
+            albums: recommendations.artistAlbums,
+            otherArtists: recommendations.otherArtists
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            error: "Failed to get artist recommendations"
         });
     }
 });

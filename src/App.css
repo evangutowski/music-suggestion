@@ -196,6 +196,7 @@
 
 .artist-card .spotify-link img,
 .track-card .spotify-link img,
+.album-card .spotify-link img,
 .artist-page-card .spotify-link img,
 .track-page-card .spotify-link img
  {
@@ -204,20 +205,23 @@
 }
 
 .artist,
-.tracks {
+.tracks,
+.albums {
   width: 100%;
   margin-top: 30px;
 }
 
 
 .artist h2,
-.tracks h2 {
+.tracks h2,
+.albums h2 {
   text-align: center;
   margin-bottom: 20px;
 }
 
 .artist-results,
-.tracks-results {
+.tracks-results,
+.album-results {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
@@ -240,14 +244,16 @@
 }
 
 .artist-card a,
-.track-card a {
+.track-card a,
+.album-card a {
   display: block;
   color: inherit;
   text-decoration: none;
 }
 
 .artist-card a:hover,
-.track-card a:hover {
+.track-card a:hover,
+.album-card a:hover {
   transform:scale(1.03);
 }
 
@@ -261,7 +267,8 @@
   margin: 0 auto 12px;
 }
 
-.track-card {
+.track-card,
+.album-card {
   width: 220px;
   padding: 15px;
   border-radius: 12px;
@@ -271,17 +278,21 @@
   cursor: pointer;
 }
 
-.track-card p:first-child {
+.track-card p:first-child,
+.album-card p:first-child {
     font-weight: 600;
     margin-bottom: 5px;
 }
 
-.track-card p:last-child {
+.track-card p:last-child,
+.album-card p:last-child {
     font-size: 14px;
 }
 
 .track-card img,
-.track-page-card img {
+.track-page-card img,
+.album-card img,
+.album-page-card img {
   width: 190px;
   height: 190px;
   object-fit: cover;
