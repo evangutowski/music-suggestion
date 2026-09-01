@@ -5,6 +5,8 @@ dotenv.config();
 const app = express();
 app.use(cors());
 const PORT = 3000;
+const cache = new Map();
+const CACHE_TIME = 10 * 60 * 1000;
 
 async function getSpotifyToken() {
     const credentials = Buffer.from(
@@ -99,6 +101,16 @@ async function getTrack(token, trackID) {
 
 
 async function getTrackRecommendations(token, track) {
+    const cacheKey = `track-recommendations-${track.id}`;
+    if (cache.has(cacheKey)) {
+        const cached = cache.get(cacheKey);
+        if (Date.now() - cached.time < CACHE_TIME) {
+            return cached.data;
+        }
+
+        cache.delete(cacheKey);
+    }
+
     const mainArtist = track.artists[0];
     const sameArtist = [];
     const otherArtists = [];
@@ -123,7 +135,7 @@ async function getTrackRecommendations(token, track) {
         );
     }
 
-    for (const album of albumData.items) {
+    for (const album of albumData.items.slice(0, 3)) {
         const trackResponse = await fetch(
             `https://api.spotify.com/v1/albums/${album.id}/tracks?limit=2`,
             {
@@ -156,7 +168,7 @@ async function getTrackRecommendations(token, track) {
 
     const otherArtistTracks = [];
 
-    for (const artist of uniqueOtherArtists.slice(0, 10)) {
+    for (const artist of uniqueOtherArtists.slice(0, 5)) {
         const params = new URLSearchParams({q: `artist:${artist.name}`, type: "track", limit: "5"});
 
         const response = await fetch(
@@ -184,17 +196,36 @@ async function getTrackRecommendations(token, track) {
         ...new Map(otherArtistTracks.map((candidate) => [candidate.id, candidate])).values()
     ];
 
-    return {
-        sameArtist: uniqueSameArtist.slice(0, 10),
-        otherArtists: uniqueOtherArtistTracks.slice(0, 10)
-    };
+    const recommendations = {
+        sameArtist: uniqueSameArtist.slice(0, 5),
+        otherArtists: uniqueOtherArtistTracks.slice(0, 5)
+    }
+
+    cache.set(cacheKey, {
+        data: recommendations,
+        time: Date.now()
+    });
+
+    return recommendations;
 }
 
 async function getArtistRecommendations(token, artistID) {
+    const cacheKey = `artist-recommendations-${artistID}`;
+
+    if (cache.has(cacheKey)) {
+        const cached = cache.get(cacheKey);
+
+        if (Date.now() - cached.time < CACHE_TIME) {
+            return cached.data;
+        }
+
+        cache.delete(cacheKey);
+    }  
+
     const artistAlbums = [];
     const otherArtists = [];
     const albumParams = new URLSearchParams({
-        limit: "10",
+        limit: "5",
         include_groups: "album"
     });
 
@@ -231,7 +262,8 @@ async function getArtistRecommendations(token, artistID) {
         for (const track of trackData.items) {
             for (const artist of track.artists) {
                 if (artist.id !== artistID) {
-                    otherArtists.push(artist);
+                    const fullArtist = await getArtist(token, artist.id)
+                    otherArtists.push(fullArtist);
                 }
             }
         }
@@ -241,10 +273,17 @@ async function getArtistRecommendations(token, artistID) {
         ...new Map(otherArtists.map((artist) => [artist.id, artist])).values()
     ];
 
-    return {
+    const recommendations = {
         artistAlbums: artistAlbums.slice(0, 5),
-        otherArtists: uniqueOtherArtists.slice(0, 10)
+        otherArtists: uniqueOtherArtists.slice(0, 5)
     };
+
+    cache.set(cacheKey, {
+        data: recommendations,
+        time: Date.now()
+    });
+
+    return recommendations;
 }
 
 app.get("/api/search", async (req, res) => {
