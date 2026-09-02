@@ -10,25 +10,30 @@ function ArtistPage() {
     const [recommendations, setRecommendations] = useState({albums: [], otherArtists: []});
 
     useEffect(() => {
-        async function fetchArtist() {
-            const response = await fetch(`http://localhost:3000/api/artist/${id}`);
-            const data = await response.json();
-            if (!response.ok){
-                console.error("Artist request failed:", data);
-                return;
-            }
-            setArtist(data);   
+        setArtist(null);
+        setRecommendations({
+            albums: [],
+            otherArtists: []
+        })
             
-            const recommendationResponse = await fetch(`http://localhost:3000/api/recommendations/artist/${id}`);
+        async function fetchArtist() {
+            const response = await fetch(
+                `http://localhost:3000/api/artist-page/${id}`
+            );
 
-            const recommendationData = await recommendationResponse.json();
-            console.log("Artist recommendations: ", recommendationData)
+            const data = await response.json();
 
-            if (!recommendationResponse.ok) {
-                console.error("Recommendation request failed: ", recommendationData);
+            if (!response.ok) {
+                console.error("Artist page request failed:", data);
                 return;
             }
-            setRecommendations(recommendationData)
+
+            setArtist(data.artist);
+
+            setRecommendations({
+                albums: data.albums || [],
+                otherArtists: data.otherArtists || []
+            });
         }
 
         fetchArtist();
@@ -40,6 +45,9 @@ function ArtistPage() {
 
     return (
         <section id="center">
+            <Link to="/" className="home-button">
+                Home
+            </Link>
             <h2 style={{ marginTop: '20px' }}> Your Selected Artist:</h2>
             <div className="artist-page-card">
                 <h2>{artist.name}</h2>

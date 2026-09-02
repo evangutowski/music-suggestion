@@ -300,3 +300,15 @@
   margin: 0 auto 12px;
   border-radius: 8px;
 }
+
+.home-button {
+  position: absolute;
+  top: 20px;
+  left: 80px;
+  padding: 8px 15px;
+  text-decoration: none;
+  border-radius: 6px;
+  font-weight: bold;
+  color: white;
+  background-color: #1f1f1f;
+}

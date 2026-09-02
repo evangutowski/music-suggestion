@@ -11,24 +11,23 @@ function TrackPage() {
 
     useEffect(() => {
         async function fetchTrack() {
-            const response = await fetch(`http://localhost:3000/api/track/${id}`);
+            const response = await fetch(
+                `http://localhost:3000/api/track-page/${id}`
+            );
+
             const data = await response.json();
-            
-            if (!response.ok){
-                console.error("Track request failed:", data);
+
+            if (!response.ok) {
+                console.error("Track page request failed:", data);
                 return;
             }
-            setTrack(data);   
-            
-            const recommendationResponse = await fetch(`http://localhost:3000/api/recommendations/track/${id}`);
-            
-            const recommendationData = await recommendationResponse.json();
-            
-            if (!recommendationResponse.ok) {
-                console.error("Recommendation request failed:", recommendationData);
-                return;
-            }       
-            setRecommendations(recommendationData)
+
+            setTrack(data.track);
+
+            setRecommendations({
+                sameArtist: data.recommendations?.sameArtist || [],
+                otherArtists: data.recommendations?.otherArtists || []
+            });
         }
 
         fetchTrack();
@@ -40,6 +39,9 @@ function TrackPage() {
 
     return (
         <section id="center">
+            <Link to="/" className="home-button">
+                Home
+            </Link>
             <h2 style={{ marginTop: '20px' }}>Your Selected Song:</h2>
             <div className="track-page-card">
                 <h2>{track.name}</h2>
