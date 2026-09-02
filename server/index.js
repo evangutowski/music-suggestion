@@ -38,27 +38,52 @@ async function getSpotifyToken() {
 
 
 async function searchSpotify(token, query) {
-    const params = new URLSearchParams({
+    const artistParams = new URLSearchParams({
         q: query,
-        type: "artist,track"
+        type: "artist"
     });
 
-    const url = `https://api.spotify.com/v1/search?${params}`;
-
-    const response = await fetch(url, {
-        method: "GET",
-        headers: {"Authorization": `Bearer ${token}`}
+    const trackParams = new URLSearchParams({
+        q: query,
+        type: "track"
     });
 
-    const data = await response.json();
+    const artistResponse = await fetch(
+        `https://api.spotify.com/v1/search?${artistParams}`,
+        {
+            method: "GET",
+            headers: {"Authorization": `Bearer ${token}`}
+        }
+    );
 
-    if (!response.ok) {
-        throw new Error(`Spotify search failed: ${JSON.stringify(data)}`);
+    const trackResponse = await fetch(
+        `https://api.spotify.com/v1/search?${trackParams}`,
+        {
+            method: "GET",
+            headers: {"Authorization": `Bearer ${token}`}
+        }
+    );
+
+    const artistData = await artistResponse.json();
+    const trackData = await trackResponse.json();
+
+    if (!artistResponse.ok) {
+        throw new Error(
+            `Spotify artist search failed: ${JSON.stringify(artistData)}`
+        );
     }
 
-    return data;
-}
+    if (!trackResponse.ok) {
+        throw new Error(
+            `Spotify track search failed: ${JSON.stringify(trackData)}`
+        );
+    }
 
+    return {
+        artists: artistData.artists,
+        tracks: trackData.tracks
+    };
+}
 
 async function getArtist(token, artistID) {
     const response = await fetch(
@@ -135,7 +160,7 @@ async function getTrackRecommendations(token, track) {
         );
     }
 
-    for (const album of albumData.items.slice(0, 3)) {
+    for (const album of albumData.items.slice(0, 5)) {
         const trackResponse = await fetch(
             `https://api.spotify.com/v1/albums/${album.id}/tracks?limit=2`,
             {
@@ -287,10 +312,25 @@ async function getArtistRecommendations(token, artistID) {
 }
 
 app.get("/api/search", async (req, res) => {
-    const token = await getSpotifyToken();
-    const query = req.query.q;
-    const data = await searchSpotify(token, query);
-    res.json(data);
+    try {
+        const token = await getSpotifyToken();
+        const query = req.query.q;
+
+        if (!query || !query.trim()) {
+            return res.status(400).json({
+                error: "Search query is required"
+            });
+        }
+
+        const data = await searchSpotify(token, query.trim());
+
+        res.json(data);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            error: "Failed to search Spotify"
+        });
+    }
 });
 
 app.get("/api/artist/:id", async (req, res) => {
@@ -319,31 +359,36 @@ app.get("/api/track/:id", async (req, res) => {
     }
 });
 
-app.get("/api/recommendations/track/:id", async (req, res) => {
+app.get("/api/track-page/:id", async (req, res) => {
     try {
         const token = await getSpotifyToken();
-        const track = await getTrack(token, req.params.id);
+        const track = await getTrack(
+            token,
+            req.params.id
+        );
 
         const recommendations = await getTrackRecommendations(
             token,
             track
         );
 
-        res.json(recommendations);
-    } 
-    
-    catch (error) {
+        res.json({
+            track: track,
+            recommendations: recommendations
+        });
+    } catch (error) {
         console.error(error);
         res.status(500).json({
-            error: "Failed to get track recommendations"
+            error: "Failed to load track page"
         });
     }
 });
 
-app.get("/api/recommendations/artist/:id", async (req, res) => {
+app.get("/api/artist-page/:id", async (req, res) => {
     try {
         const token = await getSpotifyToken();
         const artist = await getArtist(token, req.params.id);
+        
         const recommendations = await getArtistRecommendations(
             token,
             artist.id
@@ -357,7 +402,7 @@ app.get("/api/recommendations/artist/:id", async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({
-            error: "Failed to get artist recommendations"
+            error: "Failed to load artist page"
         });
     }
 });

@@ -23,8 +23,6 @@ function ArtistPage() {
 
             const data = await response.json();
 
-            console.log("Artist recommendations: ", data);
-
             if (!response.ok) {
                 console.error("Artist page request failed:", data);
                 return;
@@ -47,6 +45,9 @@ function ArtistPage() {
 
     return (
         <section id="center">
+            <Link to="/" className="home-button">
+                Home
+            </Link>
             <h2 style={{ marginTop: '20px' }}> Your Selected Artist:</h2>
             <div className="artist-page-card">
                 <h2>{artist.name}</h2>

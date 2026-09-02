@@ -39,6 +39,9 @@ function TrackPage() {
 
     return (
         <section id="center">
+            <Link to="/" className="home-button">
+                Home
+            </Link>
             <h2 style={{ marginTop: '20px' }}>Your Selected Song:</h2>
             <div className="track-page-card">
                 <h2>{track.name}</h2>
