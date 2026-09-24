@@ -6,8 +6,14 @@ const app = express();
 app.use(cors());
 const PORT = 3000;
 const cache = new Map();
-const CACHE_TIME = 10 * 60 * 1000;
 
+function getCached(cacheKey) {
+    return cache.get(cacheKey)
+}
+
+function setCached(cacheKey, data) {
+    cache.set(cacheKey, data)
+}
 async function getSpotifyToken() {
     const credentials = Buffer.from(
         `${process.env.SPOTIFY_CLIENT_ID}:${process.env.SPOTIFY_CLIENT_SECRET}`
@@ -38,6 +44,12 @@ async function getSpotifyToken() {
 
 
 async function searchSpotify(token, query) {
+    const cacheKey = `search-${query.toLowerCase()}`;
+    const cached = getCached(cacheKey)
+    if (cached) {
+        return cached;
+    }
+
     const artistParams = new URLSearchParams({
         q: query,
         type: "artist"
@@ -79,13 +91,23 @@ async function searchSpotify(token, query) {
         );
     }
 
-    return {
+    const data = {
         artists: artistData.artists,
         tracks: trackData.tracks
     };
+
+    setCached(cacheKey, data);
+
+    return data;
 }
 
 async function getArtist(token, artistID) {
+    const cacheKey = `artist-${artistID}`;
+    const cached = getCached(cacheKey)
+    if (cached) {
+        return cached;
+    }
+
     const response = await fetch(
         `https://api.spotify.com/v1/artists/${artistID}`,
         {
@@ -100,12 +122,19 @@ async function getArtist(token, artistID) {
     if (!response.ok) {
         throw new Error(`Spotify artist request failed: ${JSON.stringify(data)}`);
     }
+    setCached(cacheKey, data);
 
     return data;
 }
 
 
 async function getTrack(token, trackID) {
+    const cacheKey = `track-${trackID}`;
+    const cached = getCached(cacheKey)
+    if (cached) {
+        return cached;
+    }
+
     const response = await fetch(
         `https://api.spotify.com/v1/tracks/${trackID}`,
         {
@@ -121,19 +150,17 @@ async function getTrack(token, trackID) {
         throw new Error(`Spotify track request failed: ${JSON.stringify(data)}`);
     }
 
+    setCached(cacheKey, data)
+
     return data;
 }
 
 
 async function getTrackRecommendations(token, track) {
     const cacheKey = `track-recommendations-${track.id}`;
-    if (cache.has(cacheKey)) {
-        const cached = cache.get(cacheKey);
-        if (Date.now() - cached.time < CACHE_TIME) {
-            return cached.data;
-        }
-
-        cache.delete(cacheKey);
+    const cached = getCached(cacheKey)
+    if (cached) {
+        return cached;
     }
 
     const mainArtist = track.artists[0];
@@ -145,19 +172,24 @@ async function getTrackRecommendations(token, track) {
         include_groups: "album,single"
     });
 
-    const albumResponse = await fetch(
-        `https://api.spotify.com/v1/artists/${mainArtist.id}/albums?${albumParams}`,
-        {
-            headers: {"Authorization": `Bearer ${token}`}
-        }
-    );
+    const albumCacheKey = `artist-albums-${mainArtist.id}`
+    let albumData = getCached(albumCacheKey)
 
-    const albumData = await albumResponse.json();
-
-    if (!albumResponse.ok) {
-        throw new Error(
-            `Failed to get artist albums: ${JSON.stringify(albumData)}`
+    if (!albumData) {
+        const albumResponse = await fetch(
+            `https://api.spotify.com/v1/artists/${mainArtist.id}/albums?${albumParams}`,
+            {
+                headers: {"Authorization": `Bearer ${token}`}
+            }
         );
+
+        albumData = await albumResponse.json();
+
+        if (!albumResponse.ok) {
+            throw new Error(`Failed to get artist albums: ${JSON.stringify(albumData)}`);
+        }
+
+        setCached(albumCacheKey, albumData);
     }
 
     for (const album of albumData.items.slice(0, 5)) {
@@ -226,26 +258,17 @@ async function getTrackRecommendations(token, track) {
         otherArtists: uniqueOtherArtistTracks.slice(0, 5)
     }
 
-    cache.set(cacheKey, {
-        data: recommendations,
-        time: Date.now()
-    });
+    setCached(cacheKey, recommendations);
 
     return recommendations;
 }
 
 async function getArtistRecommendations(token, artistID) {
     const cacheKey = `artist-recommendations-${artistID}`;
-
-    if (cache.has(cacheKey)) {
-        const cached = cache.get(cacheKey);
-
-        if (Date.now() - cached.time < CACHE_TIME) {
-            return cached.data;
-        }
-
-        cache.delete(cacheKey);
-    }  
+    const cached = getCached(cacheKey)
+    if (cached) {
+        return cached;
+    } 
 
     const artistAlbums = [];
     const otherArtists = [];
@@ -303,10 +326,7 @@ async function getArtistRecommendations(token, artistID) {
         otherArtists: uniqueOtherArtists.slice(0, 5)
     };
 
-    cache.set(cacheKey, {
-        data: recommendations,
-        time: Date.now()
-    });
+    setCached(cacheKey, recommendations);
 
     return recommendations;
 }
