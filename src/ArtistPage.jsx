@@ -64,13 +64,11 @@ function ArtistPage() {
                 <ul className="album-results">
                     {recommendations.albums.map((album) => (
                         <li className="album-card" key={album.id}>
-                            <Link to={`/track/${album.id}`}>
-                                <p>{album.name}</p>
-                                {album.images?.[0] && (
-                                    <img src={album.images[0].url} alt={album.name} />
-                                )}
-                                <p>{album.artists?.map((artist) => artist.name).join(", ")}</p>
-                            </Link>
+                            <p>{album.name}</p>
+                            {album.images?.[0] && (
+                                <img src={album.images[0].url} alt={album.name} />
+                            )}
+                            <p>{album.artists?.map((artist) => artist.name).join(", ")}</p>
                             <a className="spotify-link" href={album.external_urls.spotify} target="_blank" rel="noreferrer">
                                 <img src={spotifyLogo} alt="Open on Spotify" />
                             </a>
