@@ -14,6 +14,45 @@ function getCached(cacheKey) {
 function setCached(cacheKey, data) {
     cache.set(cacheKey, data)
 }
+
+async function promisePool(items, worker, concurrency = 3) {
+    const results = new Array(items.length);
+    let nextIndex = 0;
+
+    async function runWorker() {
+        while (true) {
+            const currentIndex = nextIndex++;
+
+            if (currentIndex >= items.length) {
+                return;
+            }
+
+            try {
+                results[currentIndex] = await worker(
+                    items[currentIndex]
+                );
+            } catch (error) {
+                console.error(error);
+                results[currentIndex] = null;
+            }
+        }
+    }
+
+    const workers = [];
+    const workerCount = Math.min(
+        concurrency,
+        items.length
+    );
+
+    for (let i = 0; i < workerCount; i++) {
+        workers.push(runWorker());
+    }
+
+    await Promise.all(workers);
+
+    return results;
+}
+
 async function getSpotifyToken() {
     const credentials = Buffer.from(
         `${process.env.SPOTIFY_CLIENT_ID}:${process.env.SPOTIFY_CLIENT_SECRET}`
@@ -192,28 +231,60 @@ async function getTrackRecommendations(token, track) {
         setCached(albumCacheKey, albumData);
     }
 
-    for (const album of albumData.items.slice(0, 5)) {
-        const trackResponse = await fetch(
-            `https://api.spotify.com/v1/albums/${album.id}/tracks?limit=2`,
-            {
-                headers: {"Authorization": `Bearer ${token}`}
-            }
-        );
+    const albumsToCheck = albumData.items.slice(0, 5);
 
-        const trackData = await trackResponse.json();
-        if (!trackResponse.ok) {
+    const albumTrackResults = await promisePool(
+        albumsToCheck,
+        async (album) => {
+            const cacheKey = `album-tracks-${album.id}`;
+            const cached = getCached(cacheKey);
+            if (cached) {
+                return cached;
+            }
+
+            const trackResponse = await fetch(
+                `https://api.spotify.com/v1/albums/${album.id}/tracks?limit=2`,
+                {
+                    headers: {"Authorization": `Bearer ${token}`}
+                }
+            );
+
+            const trackData = await trackResponse.json();
+
+            if (!trackResponse.ok) {
+                throw new Error(`Failed to get album tracks: ${JSON.stringify(trackData)}`);
+            }
+
+            setCached(cacheKey, trackData)
+
+            return trackData;
+        }, 3
+    );
+
+    for (let i = 0; i < albumsToCheck.length; i++) {
+        const album = albumsToCheck[i]
+        const trackData = albumTrackResults[i];
+
+        if (!trackData) {
             continue;
         }
 
         for (const candidate of trackData.items) {
-            if (candidate.id !== track.id) {sameArtist.push({...candidate,album: album});
+            if (candidate.id !== track.id) {
+                sameArtist.push({
+                    ...candidate,
+                    album: album
+                });
             }
 
             for (const artist of candidate.artists) {
-                if (artist.id !== mainArtist.id) {otherArtists.push(artist);}
+                if (artist.id !== mainArtist.id) {
+                    otherArtists.push(artist);
+                }
             }
         }
     }
+
 
     const uniqueSameArtist = [
         ...new Map(sameArtist.map((candidate) => [candidate.id, candidate])).values()
@@ -223,29 +294,56 @@ async function getTrackRecommendations(token, track) {
         ...new Map(otherArtists.map((artist) => [artist.id, artist])).values()
     ];
 
+    const artistsToSearch = uniqueOtherArtists.slice(0, 5);
+    
+    const otherArtistResults = await promisePool(
+        artistsToSearch,
+
+        async (artist) => {
+            const cacheKey = `artist-search-${artist.id}`;
+            const cached = getCached(cacheKey);
+            if (cached) {
+                return cached;
+            }
+
+            const params = new URLSearchParams({
+                q: `artist:${artist.name}`,
+                type: "track",
+                limit: "5"
+            });
+
+            const response = await fetch(
+                `https://api.spotify.com/v1/search?${params}`,
+                {
+                    headers: {"Authorization": `Bearer ${token}`}
+                }
+            );
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(`Spotify track search failed: ${JSON.stringify(data)}`);
+            }
+
+            setCached(cacheKey, data.tracks.items);
+
+            return data.tracks.items;
+        }, 3
+    );
+
     const otherArtistTracks = [];
 
-    for (const artist of uniqueOtherArtists.slice(0, 5)) {
-        const params = new URLSearchParams({q: `artist:${artist.name}`, type: "track", limit: "5"});
-
-        const response = await fetch(
-            `https://api.spotify.com/v1/search?${params}`,
-            {
-                headers: {"Authorization": `Bearer ${token}`}
-            }
-        );
-
-        const data = await response.json();
-
-        if (!response.ok) {
+    for (const tracks of otherArtistResults) {
+        if (!tracks) {
             continue;
         }
 
-        for (const candidate of data.tracks.items) {
-            if (candidate.artists.some(
-                (candidateArtist) => candidateArtist.id === mainArtist.id)) {continue;}
+        for (const candidate of tracks) {
+            const belongsToMainArtist = candidate.artists.some((candidateArtist) => candidateArtist.id === mainArtist.id);
 
-            otherArtistTracks.push(candidate);
+            if (!belongsToMainArtist) {
+                otherArtistTracks.push(candidate)
+            }
         }
     }
 
@@ -293,27 +391,50 @@ async function getArtistRecommendations(token, artistID) {
 
     artistAlbums.push(...albumData.items);
 
-    for (const album of albumData.items.slice(0, 5)) {
-        const trackResponse = await fetch(
-            `https://api.spotify.com/v1/albums/${album.id}/tracks?limit=10`,
-            {
-                headers: {"Authorization": `Bearer ${token}`}
+    const albumTrackResults = await promisePool(
+        albumData.items.slice(0, 5),
+        async (album) => {
+            const trackResponse = await fetch(
+                `https://api.spotify.com/v1/albums/${album.id}/tracks?limit=10`,
+                {
+                    headers: {"Authorization": `Bearer ${token}`}
+                }
+            );
+
+            const trackData = await trackResponse.json();
+
+            if (!trackResponse.ok) {
+                return [];
             }
-        );
 
-        const trackData = await trackResponse.json();
+            return trackData.items;
+        }, 3
+    );
 
-        if (!trackResponse.ok) {
-            continue;
-        }
+    const artistIDs = [];
 
-        for (const track of trackData.items) {
+    for (const trackData of albumTrackResults) {
+        for (const track of trackData) {
             for (const artist of track.artists) {
                 if (artist.id !== artistID) {
-                    const fullArtist = await getArtist(token, artist.id)
-                    otherArtists.push(fullArtist);
+                    artistIDs.push(artist.id);
                 }
             }
+        }
+    }
+
+    const uniqueArtistIDs = [...new Set(artistIDs)];
+
+    const fullArtistResults = await promisePool(
+        uniqueArtistIDs,
+        async (artistID) => {
+            return await getArtist(token, artistID);
+        }, 3
+    );
+
+    for (const artist of fullArtistResults) {
+        if (artist) {
+            otherArtists.push(artist);
         }
     }
 
