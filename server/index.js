@@ -7,12 +7,28 @@ app.use(cors());
 const PORT = 3000;
 const cache = new Map();
 
+const CACHE_TTL = 5 * 60 * 1000;
+
 function getCached(cacheKey) {
-    return cache.get(cacheKey)
+    const cached = cache.get(cacheKey);
+
+    if (!cached) {
+        return null;
+    }
+
+    if (Date.now() >= cached.expiresAt) {
+        cache.delete(cacheKey);
+        return null;
+    }
+
+    return cached.data
 }
 
-function setCached(cacheKey, data) {
-    cache.set(cacheKey, data)
+function setCached(cacheKey, data, ttl = CACHE_TTL) {
+    cache.set(cacheKey, {
+        data: data,
+        expiresAt: Date.now() + ttl
+    });
 }
 
 async function promisePool(items, worker, concurrency = 3) {
